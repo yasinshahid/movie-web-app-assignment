@@ -10,9 +10,30 @@ export type MovieListItem = {
 	releaseYear: number | null;
 	owner: { id: string; email: string };
 	reviewCount: number;
+	averageRating: number | null;
 	createdAt: string;
 	updatedAt: string;
 };
+
+async function averageRatingsByMovieId(movieIds: string[]) {
+	if (movieIds.length === 0) return {} as Record<string, number | null>;
+
+	const rows = await prisma.review.groupBy({
+		by: ['movieId'],
+		where: {
+			movieId: { in: movieIds },
+		},
+		_avg: {
+			rating: true,
+		},
+	});
+
+	const map: Record<string, number | null> = {};
+	for (const row of rows) {
+		map[row.movieId] = row._avg.rating;
+	}
+	return map;
+}
 
 function toListItem(movie: {
 	id: string;
@@ -25,7 +46,7 @@ function toListItem(movie: {
 	updatedAt: Date;
 	owner: { id: string; email: string };
 	_count: { reviews: number };
-}): MovieListItem {
+}, averageRating: number | null): MovieListItem {
 	return {
 		id: movie.id,
 		title: movie.title,
@@ -35,6 +56,7 @@ function toListItem(movie: {
 		releaseYear: movie.releaseYear,
 		owner: movie.owner,
 		reviewCount: movie._count.reviews,
+		averageRating,
 		createdAt: movie.createdAt.toISOString(),
 		updatedAt: movie.updatedAt.toISOString(),
 	};
@@ -89,8 +111,10 @@ export async function listMovies(input: {
 		}),
 	]);
 
+	const avgById = await averageRatingsByMovieId(movies.map((m) => m.id));
+
 	return {
-		items: movies.map(toListItem),
+		items: movies.map((m) => toListItem(m, avgById[m.id] ?? null)),
 		page,
 		pageSize,
 		total,
@@ -122,7 +146,12 @@ export async function getMovie(movieId: string) {
 		});
 	}
 
-	return { movie: toListItem(movie) };
+	const ratingAgg = await prisma.review.aggregate({
+		where: { movieId },
+		_avg: { rating: true },
+	});
+
+	return { movie: toListItem(movie, ratingAgg._avg.rating ?? null) };
 }
 
 export async function createMovie(input: {
@@ -158,7 +187,7 @@ export async function createMovie(input: {
 		});
 
 		return {
-			movie: toListItem(movie),
+			movie: toListItem(movie, null),
 		};
 	} catch (err: any) {
 		if (err?.code === 'P2002') {
@@ -238,8 +267,13 @@ export async function updateMovie(input: {
 			},
 		});
 
+		const ratingAgg = await prisma.review.aggregate({
+			where: { movieId: input.movieId },
+			_avg: { rating: true },
+		});
+
 		return {
-			movie: toListItem(movie),
+			movie: toListItem(movie, ratingAgg._avg.rating ?? null),
 		};
 	} catch (err: any) {
 		if (err?.code === 'P2002') {

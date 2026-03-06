@@ -9,7 +9,7 @@ type BackendError = {
 	fields?: BackendFieldError[];
 };
 
-type ErrorContext = 'movie-create' | 'review';
+type ErrorContext = 'movie-create' | 'movie-edit' | 'review';
 
 type Options = {
 	context?: ErrorContext;
@@ -47,6 +47,20 @@ function friendlyMessageForField(context: ErrorContext, fieldError: BackendField
 		if (/title/i.test(field ?? '') && /exist/i.test(message)) return 'Movie title already exists.';
 	}
 
+	if (context === 'movie-edit') {
+		if (field === 'body.title') {
+			if (/required/i.test(message) || /too\s+small/i.test(message) || /at\s+least\s+1\b/i.test(message) || /\b>=\s*1\b/.test(message)) {
+				return 'Title is required.';
+			}
+			if (/too\s+big/i.test(message) || /at\s+most\s+200\b/i.test(message) || /\b<=\s*200\b/.test(message)) {
+				return 'Title must be 200 characters or fewer.';
+			}
+		}
+		if (field === 'body.posterUrl') return 'Please enter a valid direct image URL for the poster.';
+		if (field === 'body.trailerUrl') return 'Please enter a valid trailer URL.';
+		if (field === 'body.releaseYear') return 'Please enter a valid release year.';
+	}
+
 	if (context === 'review') {
 		if (field === 'body.rating') return 'Please enter a rating from 1 to 5.';
 		if (field === 'body.comment') return 'Please enter a valid comment.';
@@ -75,7 +89,7 @@ export function getFriendlyApiErrorMessage(err: any, options?: Options): string 
 	}
 
 	// Context-specific conflict mapping (e.g. unique title).
-	if (context === 'movie-create') {
+	if (context === 'movie-create' || context === 'movie-edit') {
 		if (status === 409 || backendError?.code === 'CONFLICT') {
 			return 'Movie title already exists.';
 		}

@@ -9,6 +9,7 @@ export type MovieListItem = {
 	releaseYear: number | null;
 	owner: { id: string; email: string };
 	reviewCount: number;
+	averageRating: number | null;
 	createdAt: string;
 	updatedAt: string;
 };
@@ -25,6 +26,10 @@ export type GetMovieResponse = {
 };
 
 export type CreateMovieResponse = {
+	movie: MovieListItem;
+};
+
+export type UpdateMovieResponse = {
 	movie: MovieListItem;
 };
 
@@ -52,4 +57,22 @@ export async function createMovie(input: {
 }) {
 	const res = await http.post('/movies', input);
 	return res.data as CreateMovieResponse;
+}
+
+export async function updateMovie(
+	movieId: string,
+	input: {
+		title?: string;
+		description?: string | null;
+		posterUrl?: string | null;
+		trailerUrl?: string | null;
+		releaseYear?: number | null;
+	},
+) {
+	const res = await http.patch(`/movies/${movieId}`, input);
+	return res.data as UpdateMovieResponse;
+}
+
+export async function deleteMovie(movieId: string) {
+	await http.delete(`/movies/${movieId}`);
 }

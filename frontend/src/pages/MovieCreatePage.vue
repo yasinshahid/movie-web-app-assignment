@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import * as moviesApi from '../api/movies';
@@ -15,6 +15,67 @@ const releaseYear = ref<string>('');
 
 const errorMessage = ref<string | null>(null);
 const isSubmitting = ref(false);
+
+const posterPreviewStatus = ref<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+
+const posterPreviewUrl = computed(() => {
+	const trimmed = typeof posterUrl.value === 'string' ? posterUrl.value.trim() : '';
+	return trimmed.length > 0 ? trimmed : null;
+});
+
+const trailerPreviewUrl = computed(() => {
+	const trimmed = typeof trailerUrl.value === 'string' ? trailerUrl.value.trim() : '';
+	return trimmed.length > 0 ? trimmed : null;
+});
+
+function normalizeEmbedUrl(raw: string): string | null {
+	let url: URL;
+	try {
+		url = new URL(raw);
+	} catch {
+		return null;
+	}
+
+	const host = url.hostname.replace(/^www\./, '');
+
+	if (host === 'youtu.be') {
+		const id = url.pathname.split('/').filter(Boolean)[0];
+		return id ? `https://www.youtube.com/embed/${id}` : null;
+	}
+
+	if (host === 'youtube.com' || host === 'm.youtube.com') {
+		if (url.pathname.startsWith('/embed/')) return raw;
+		if (url.pathname === '/watch') {
+			const id = url.searchParams.get('v');
+			return id ? `https://www.youtube.com/embed/${id}` : null;
+		}
+		if (url.pathname.startsWith('/shorts/')) {
+			const id = url.pathname.split('/').filter(Boolean)[1];
+			return id ? `https://www.youtube.com/embed/${id}` : null;
+		}
+	}
+
+	if (host === 'vimeo.com') {
+		const id = url.pathname.split('/').filter(Boolean)[0];
+		return id ? `https://player.vimeo.com/video/${id}` : null;
+	}
+
+	return null;
+}
+
+const trailerEmbedUrl = computed(() => {
+	const raw = trailerPreviewUrl.value;
+	if (!raw) return null;
+	return normalizeEmbedUrl(raw);
+});
+
+watch(
+	posterPreviewUrl,
+	(url) => {
+		posterPreviewStatus.value = url ? 'loading' : 'idle';
+	},
+	{ immediate: true },
+);
 
 
 function normalizeDescription(val: unknown) {
@@ -99,12 +160,42 @@ async function onSubmit() {
 				<small class="hint muted">
 					Use a direct image URL ending in .jpg, .jpeg, .png, or a public image CDN link.
 				</small>
+
+				<div v-if="posterPreviewUrl" class="previewBlock">
+					<div class="posterPreviewBox">
+						<img
+							v-if="posterPreviewStatus !== 'error'"
+							class="posterPreviewImg"
+							:src="posterPreviewUrl"
+							alt="Poster preview"
+							loading="lazy"
+							@load="posterPreviewStatus = 'loaded'"
+							@error="posterPreviewStatus = 'error'"
+						/>
+						<div v-else class="posterPreviewFallback muted">
+							Could not preview this image. Use a direct image URL.
+						</div>
+					</div>
+				</div>
 			</label>
 
 			<label class="field">
 				<span>Trailer URL (optional)</span>
 				<input v-model="trailerUrl" type="url" placeholder="https://..." autocomplete="off" />
 				<small class="hint muted">YouTube/Vimeo links embed automatically when possible.</small>
+
+				<div v-if="trailerPreviewUrl" class="previewBlock">
+					<div v-if="trailerEmbedUrl" class="trailerPreviewFrame">
+						<iframe
+							:src="trailerEmbedUrl"
+							title="Trailer preview"
+							loading="lazy"
+							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+							allowfullscreen
+						/>
+					</div>
+					<p v-else class="muted trailerPreviewFallback">Trailer preview is not available for this URL.</p>
+				</div>
 			</label>
 
 			<label class="field">
@@ -133,6 +224,54 @@ async function onSubmit() {
 .hint {
 	font-weight: 400;
 	font-size: 12px;
+}
+
+.previewBlock {
+	margin-top: 8px;
+}
+
+.posterPreviewBox {
+	width: 96px;
+	height: 144px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--border);
+	overflow: hidden;
+	background: var(--hover);
+	display: grid;
+	place-items: center;
+}
+
+.posterPreviewImg {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.posterPreviewFallback {
+	padding: 8px;
+	font-size: 12px;
+	font-weight: 700;
+	text-align: center;
+}
+
+.trailerPreviewFrame {
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	overflow: hidden;
+	aspect-ratio: 16 / 9;
+}
+
+.trailerPreviewFrame iframe {
+	width: 100%;
+	height: 100%;
+	border: 0;
+	display: block;
+}
+
+.trailerPreviewFallback {
+	margin: 0;
+	font-size: 13px;
 }
 
 </style>

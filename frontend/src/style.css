@@ -220,10 +220,14 @@ button:disabled {
 }
 
 .btnPrimary:hover {
+	background: var(--ink);
+	color: var(--surface);
 	box-shadow: 0 0 0 1px var(--surface) inset;
 }
 
 .btnPrimary:active {
+	background: var(--ink);
+	color: var(--surface);
 	box-shadow: 0 0 0 2px var(--surface) inset;
 }
 
@@ -233,8 +237,24 @@ button.btnPrimary:disabled:active {
 }
 
 .btnPrimary:focus-visible {
+	background: var(--ink);
+	color: var(--surface);
 	outline: 2px solid var(--focus);
 	outline-offset: 2px;
+}
+
+.btnDangerOutline {
+	border-color: #b00020;
+	color: #b00020;
+	background: var(--surface);
+}
+
+.btnDangerOutline:hover:not(:disabled) {
+	background: rgba(176, 0, 32, 0.06);
+}
+
+.btnDangerOutline:active:not(:disabled) {
+	background: rgba(176, 0, 32, 0.12);
 }
 
 .error {

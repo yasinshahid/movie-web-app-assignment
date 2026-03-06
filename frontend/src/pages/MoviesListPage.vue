@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 
 import * as moviesApi from '../api/movies';
+import StarRating from '../components/common/StarRating.vue';
 import { useAuthStore } from '../stores/auth';
 
 const auth = useAuthStore();
@@ -20,6 +21,11 @@ const hasResults = computed(() => items.value.length > 0);
 function formatDate(iso: string) {
 	const date = new Date(iso);
 	return Number.isNaN(date.getTime()) ? iso : date.toLocaleString();
+}
+
+function formatAverageRating(val: number | null) {
+	if (val === null) return null;
+	return `${val.toFixed(1)}/5`;
 }
 
 async function fetchMovies() {
@@ -122,6 +128,10 @@ onMounted(async () => {
 									<span v-if="movie.releaseYear" class="year muted">({{ movie.releaseYear }})</span>
 								</h2>
 								<span class="badge">{{ movie.reviewCount }} reviews</span>
+							</div>
+							<div v-if="movie.averageRating !== null" class="ratingRow">
+								<StarRating :value="movie.averageRating" readonly label="Average rating" />
+								<span class="muted">{{ formatAverageRating(movie.averageRating) }}</span>
 							</div>
 							<p v-if="movie.description" class="desc">{{ movie.description }}</p>
 							<p v-else class="desc muted">No description.</p>
@@ -251,6 +261,13 @@ onMounted(async () => {
 	padding: 2px 8px;
 	font-size: 12px;
 	opacity: 0.9;
+}
+
+.ratingRow {
+	margin-top: 6px;
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
 }
 
 .desc {

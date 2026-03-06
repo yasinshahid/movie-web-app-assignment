@@ -1,14 +1,18 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
 import * as moviesApi from '../api/movies';
 import * as reviewsApi from '../api/reviews';
+import StarRating from '../components/common/StarRating.vue';
+import EditMovieModal from '../components/EditMovieModal.vue';
 import { useAuthStore } from '../stores/auth';
 import { getFriendlyApiErrorMessage } from '../utils/apiErrorMessage';
 
 const props = defineProps<{ movieId: string }>();
 
 const auth = useAuthStore();
+const router = useRouter();
 
 const isLoading = ref(false);
 const notFound = ref(false);
@@ -66,6 +70,16 @@ const trailerEmbedUrl = computed(() => {
 const hasReviews = computed(() => reviews.value.length > 0);
 
 const currentUserId = computed(() => auth.currentUser?.id ?? null);
+
+const canEditMovie = computed(() => {
+	if (!auth.isAuthenticated) return false;
+	const userId = currentUserId.value;
+	const ownerId = movie.value?.owner?.id;
+	return Boolean(userId && ownerId && userId === ownerId);
+});
+
+const isEditOpen = ref(false);
+const isDeletingMovie = ref(false);
 const userReview = computed(() => {
 	const userId = currentUserId.value;
 	if (!userId) return null;
@@ -90,6 +104,11 @@ function normalizeComment(val: string) {
 function formatDate(iso: string) {
 	const date = new Date(iso);
 	return Number.isNaN(date.getTime()) ? iso : date.toLocaleString();
+}
+
+function formatAverageRating(val: number | null) {
+	if (val === null) return null;
+	return `${val.toFixed(1)}/5`;
 }
 
 async function refresh(movieId: string, options?: { showLoading?: boolean }) {
@@ -131,6 +150,30 @@ async function load(movieId: string) {
 	actionErrorMessage.value = null;
 	isEditing.value = false;
 	await refresh(movieId, { showLoading: true });
+}
+
+async function onDeleteMovie() {
+	if (!canEditMovie.value) return;
+	if (isDeletingMovie.value) return;
+
+	const ok = window.confirm('Are you sure you want to delete this movie?');
+	if (!ok) return;
+
+	actionErrorMessage.value = null;
+	actionMessage.value = 'Deleting movie...';
+	isDeletingMovie.value = true;
+	try {
+		await moviesApi.deleteMovie(props.movieId);
+		await router.push('/');
+	} catch (err: any) {
+		actionErrorMessage.value = getFriendlyApiErrorMessage(err, {
+			context: 'movie-edit',
+			fallbackMessage: 'Failed to delete movie.',
+		});
+	} finally {
+		actionMessage.value = null;
+		isDeletingMovie.value = false;
+	}
 }
 
 async function onSubmitReview() {
@@ -257,10 +300,33 @@ watch(
 					</div>
 
 					<div class="heroInfo">
-						<h1 class="title">
-							{{ movie.title }}
-							<span v-if="movie.releaseYear" class="year muted">({{ movie.releaseYear }})</span>
-						</h1>
+						<div class="heroTitleRow">
+							<div class="heroTitleWrap">
+								<h1 class="title">
+									{{ movie.title }}
+									<span v-if="movie.releaseYear" class="year muted">({{ movie.releaseYear }})</span>
+								</h1>
+							</div>
+
+							<div v-if="canEditMovie" class="actions heroOwnerActions">
+								<button
+									type="button"
+									class="btnSm"
+									:disabled="isDeletingMovie"
+									@click="isEditOpen = true"
+								>
+									Edit
+								</button>
+								<button
+									type="button"
+									class="btnSm btnDangerOutline"
+									:disabled="isDeletingMovie"
+									@click="onDeleteMovie"
+								>
+									{{ isDeletingMovie ? 'Deleting…' : 'Delete' }}
+								</button>
+							</div>
+						</div>
 						<p v-if="movie.description" class="desc">{{ movie.description }}</p>
 						<p v-else class="desc muted">No description.</p>
 
@@ -273,14 +339,34 @@ watch(
 								<span class="metaLabel">Reviews</span>
 								<span class="metaValue">{{ movie.reviewCount }}</span>
 							</div>
+							<div v-if="movie.averageRating !== null" class="metaItem">
+								<span class="metaLabel">Average rating</span>
+								<span class="metaValue metaRating">
+									<StarRating :value="movie.averageRating" readonly label="Average rating" />
+									<span class="muted">{{ formatAverageRating(movie.averageRating) }}</span>
+								</span>
+							</div>
 							<div class="metaItem">
 								<span class="metaLabel">Created</span>
 								<span class="metaValue">{{ formatDate(movie.createdAt) }}</span>
 							</div>
 						</div>
+
 					</div>
 				</div>
 			</section>
+
+			<EditMovieModal
+				v-if="isEditOpen && movie"
+				:movie="movie"
+				@close="isEditOpen = false"
+				@saved="
+					() => {
+						isEditOpen = false;
+						refresh(props.movieId);
+					}
+				"
+			/>
 
 			<section v-if="movie.trailerUrl" class="card trailer">
 				<h2 class="trailerTitle">Trailer</h2>
@@ -311,8 +397,10 @@ watch(
 				<ul v-else class="reviewList">
 					<li v-for="review in reviews" :key="review.id" class="card reviewItem">
 						<div class="reviewTop">
-							<span>
-								<strong>Rating:</strong> {{ review.rating }}
+								<span class="reviewRating">
+									<strong>Rating:</strong>
+									<StarRating :value="review.rating" readonly label="Review rating" />
+									<span class="muted">{{ review.rating }}/5</span>
 								<span v-if="currentUserId && review.user.id === currentUserId" class="you">
 									(You)
 								</span>
@@ -352,13 +440,7 @@ watch(
 						>
 							<label class="field">
 								<span>Rating</span>
-								<select v-model.number="rating" required>
-									<option :value="1">1</option>
-									<option :value="2">2</option>
-									<option :value="3">3</option>
-									<option :value="4">4</option>
-									<option :value="5">5</option>
-								</select>
+								<StarRating v-model:value="rating" :max="5" label="Rating" />
 							</label>
 							<label class="field">
 								<span>Comment (optional)</span>
@@ -377,13 +459,7 @@ watch(
 				<form class="form reviewForm" @submit.prevent="onSubmitReview">
 					<label class="field">
 						<span>Rating</span>
-						<select v-model.number="rating" required>
-							<option :value="1">1</option>
-							<option :value="2">2</option>
-							<option :value="3">3</option>
-							<option :value="4">4</option>
-							<option :value="5">5</option>
-						</select>
+						<StarRating v-model:value="rating" :max="5" label="Rating" />
 					</label>
 					<label class="field">
 						<span>Comment (optional)</span>
@@ -436,8 +512,8 @@ watch(
 
 .posterImg,
 .posterPlaceholder {
-	width: 96px;
-	height: 144px;
+	width: 160px;
+	height: 240px;
 	border-radius: var(--radius-sm);
 	border: 1px solid var(--border);
 }
@@ -474,6 +550,22 @@ watch(
 	gap: 10px;
 }
 
+.heroTitleRow {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.heroTitleWrap {
+	min-width: 0;
+}
+
+.heroOwnerActions {
+	flex: 0 0 auto;
+	justify-content: flex-end;
+}
+
 .metaItem {
 	display: grid;
 	gap: 2px;
@@ -487,6 +579,19 @@ watch(
 .metaValue {
 	font-size: 14px;
 	font-weight: 600;
+}
+
+.metaRating {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.reviewRating {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
 }
 
 .reviewsTitle {
