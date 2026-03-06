@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue';
 import * as moviesApi from '../api/movies';
 import * as reviewsApi from '../api/reviews';
 import { useAuthStore } from '../stores/auth';
+import { getFriendlyApiErrorMessage } from '../utils/apiErrorMessage';
 
 const props = defineProps<{ movieId: string }>();
 
@@ -16,8 +17,51 @@ const errorMessage = ref<string | null>(null);
 const actionMessage = ref<string | null>(null);
 const actionErrorMessage = ref<string | null>(null);
 
+const posterLoadFailed = ref(false);
+
 const movie = ref<moviesApi.MovieListItem | null>(null);
 const reviews = ref<reviewsApi.ReviewItem[]>([]);
+
+function normalizeEmbedUrl(raw: string): string | null {
+	let url: URL;
+	try {
+		url = new URL(raw);
+	} catch {
+		return null;
+	}
+
+	const host = url.hostname.replace(/^www\./, '');
+
+	if (host === 'youtu.be') {
+		const id = url.pathname.split('/').filter(Boolean)[0];
+		return id ? `https://www.youtube.com/embed/${id}` : null;
+	}
+
+	if (host === 'youtube.com' || host === 'm.youtube.com') {
+		if (url.pathname.startsWith('/embed/')) return raw;
+		if (url.pathname === '/watch') {
+			const id = url.searchParams.get('v');
+			return id ? `https://www.youtube.com/embed/${id}` : null;
+		}
+		if (url.pathname.startsWith('/shorts/')) {
+			const id = url.pathname.split('/').filter(Boolean)[1];
+			return id ? `https://www.youtube.com/embed/${id}` : null;
+		}
+	}
+
+	if (host === 'vimeo.com') {
+		const id = url.pathname.split('/').filter(Boolean)[0];
+		return id ? `https://player.vimeo.com/video/${id}` : null;
+	}
+
+	return null;
+}
+
+const trailerEmbedUrl = computed(() => {
+	const raw = movie.value?.trailerUrl;
+	if (!raw) return null;
+	return normalizeEmbedUrl(raw);
+});
 
 const hasReviews = computed(() => reviews.value.length > 0);
 
@@ -64,6 +108,7 @@ async function refresh(movieId: string, options?: { showLoading?: boolean }) {
 			reviewsApi.listMovieReviews(movieId, { page: 1, pageSize: 20 }),
 		]);
 		movie.value = movieRes.movie;
+		posterLoadFailed.value = false;
 		reviews.value = reviewsRes.items;
 	} catch (err: any) {
 		const status = err?.response?.status;
@@ -104,8 +149,8 @@ async function onSubmitReview() {
 		rating.value = 5;
 		comment.value = '';
 		await refresh(props.movieId);
-	} catch {
-		actionErrorMessage.value = 'Failed to submit review.';
+	} catch (err: any) {
+		actionErrorMessage.value = getFriendlyApiErrorMessage(err, { context: 'review' });
 	} finally {
 		actionMessage.value = null;
 		isSubmitting.value = false;
@@ -146,8 +191,8 @@ async function onUpdateReview() {
 		});
 		isEditing.value = false;
 		await refresh(props.movieId);
-	} catch {
-		actionErrorMessage.value = 'Failed to update review.';
+	} catch (err: any) {
+		actionErrorMessage.value = getFriendlyApiErrorMessage(err, { context: 'review' });
 	} finally {
 		actionMessage.value = null;
 		isUpdating.value = false;
@@ -167,8 +212,8 @@ async function onDeleteReview() {
 		rating.value = 5;
 		comment.value = '';
 		await refresh(props.movieId);
-	} catch {
-		actionErrorMessage.value = 'Failed to delete review.';
+	} catch (err: any) {
+		actionErrorMessage.value = getFriendlyApiErrorMessage(err, { context: 'review' });
 	} finally {
 		actionMessage.value = null;
 		isDeleting.value = false;
@@ -193,18 +238,67 @@ watch(
 		<div v-else-if="movie" class="content">
 			<header class="header">
 				<div>
-					<h1 class="title">{{ movie.title }}</h1>
-					<p v-if="movie.description" class="desc">{{ movie.description }}</p>
-					<p v-else class="desc muted">No description.</p>
+					<RouterLink class="navLink" to="/">← Back to movies</RouterLink>
 				</div>
-				<RouterLink class="navLink" to="/">Back</RouterLink>
 			</header>
 
-			<div class="card meta">
-				<p><strong>Owner:</strong> {{ movie.owner.email }}</p>
-				<p><strong>Review count:</strong> {{ movie.reviewCount }}</p>
-				<p><strong>Created:</strong> {{ formatDate(movie.createdAt) }}</p>
-			</div>
+			<section class="card hero">
+				<div class="heroMain">
+					<div class="posterWrap">
+						<img
+								v-if="movie.posterUrl && !posterLoadFailed"
+							class="posterImg"
+							:src="movie.posterUrl"
+							:alt="`${movie.title} poster`"
+							loading="lazy"
+								@error="posterLoadFailed = true"
+						/>
+						<div v-else class="posterPlaceholder muted">Poster unavailable</div>
+					</div>
+
+					<div class="heroInfo">
+						<h1 class="title">
+							{{ movie.title }}
+							<span v-if="movie.releaseYear" class="year muted">({{ movie.releaseYear }})</span>
+						</h1>
+						<p v-if="movie.description" class="desc">{{ movie.description }}</p>
+						<p v-else class="desc muted">No description.</p>
+
+						<div class="heroMeta">
+							<div class="metaItem">
+								<span class="metaLabel">Owner</span>
+								<span class="metaValue">{{ movie.owner.email }}</span>
+							</div>
+							<div class="metaItem">
+								<span class="metaLabel">Reviews</span>
+								<span class="metaValue">{{ movie.reviewCount }}</span>
+							</div>
+							<div class="metaItem">
+								<span class="metaLabel">Created</span>
+								<span class="metaValue">{{ formatDate(movie.createdAt) }}</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section v-if="movie.trailerUrl" class="card trailer">
+				<h2 class="trailerTitle">Trailer</h2>
+
+				<div v-if="trailerEmbedUrl" class="trailerFrame">
+					<iframe
+						:src="trailerEmbedUrl"
+						title="Trailer"
+						loading="lazy"
+						allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+						allowfullscreen
+					/>
+				</div>
+
+				<p v-else class="trailerLink">
+					<a :href="movie.trailerUrl" target="_blank" rel="noreferrer">Open trailer</a>
+				</p>
+			</section>
 
 			<p v-if="actionMessage" class="state">{{ actionMessage }}</p>
 			<p v-if="actionErrorMessage" class="state">{{ actionErrorMessage }}</p>
@@ -270,13 +364,15 @@ watch(
 								<span>Comment (optional)</span>
 								<textarea v-model="comment" rows="3" />
 							</label>
-							<button type="submit" :disabled="isUpdating || isDeleting">Save</button>
+							<button type="submit" class="btnPrimary" :disabled="isUpdating || isDeleting">
+								Save
+							</button>
 						</form>
 					</li>
 				</ul>
 			</section>
 
-			<section v-if="canAddReview" class="addReview">
+			<section v-if="canAddReview" class="card addReview">
 				<h2 class="reviewsTitle">Add your review</h2>
 				<form class="form reviewForm" @submit.prevent="onSubmitReview">
 					<label class="field">
@@ -293,7 +389,11 @@ watch(
 						<span>Comment (optional)</span>
 						<textarea v-model="comment" rows="3" />
 					</label>
-					<button type="submit" :disabled="isSubmitting || isUpdating || isDeleting">
+					<button
+						type="submit"
+						class="btnPrimary"
+						:disabled="isSubmitting || isUpdating || isDeleting"
+					>
 						Submit
 					</button>
 				</form>
@@ -305,30 +405,121 @@ watch(
 <style scoped>
 
 .header {
-	display: flex;
-	gap: 12px;
-	align-items: flex-start;
-	justify-content: space-between;
 	margin-bottom: 12px;
+}
+
+.hero {
+	padding: 14px;
+	margin-bottom: 16px;
+}
+
+.heroMain {
+	display: flex;
+	gap: 14px;
+	align-items: flex-start;
+}
+
+@media (max-width: 520px) {
+	.heroMain {
+		flex-direction: column;
+	}
+
+	.posterWrap {
+		align-self: center;
+	}
+}
+
+.heroInfo {
+	flex: 1;
+	min-width: 0;
+}
+
+.posterImg,
+.posterPlaceholder {
+	width: 96px;
+	height: 144px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--border);
+}
+
+.posterImg {
+	display: block;
+	object-fit: cover;
+}
+
+.posterPlaceholder {
+	display: grid;
+	place-items: center;
+	text-align: center;
+	font-size: 12px;
+	padding: 6px;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	background: var(--hover);
+}
+
+.year {
+	margin-left: 6px;
+	font-size: 16px;
 }
 
 .desc {
 	margin: 8px 0 0;
+	max-width: 70ch;
 }
 
-.meta {
+.heroMeta {
+	margin-top: 12px;
 	display: grid;
-	gap: 6px;
-	margin-bottom: 16px;
+	gap: 10px;
 }
 
-.meta p {
-	margin: 0;
+.metaItem {
+	display: grid;
+	gap: 2px;
+}
+
+.metaLabel {
+	font-size: 12px;
+	opacity: 0.7;
+}
+
+.metaValue {
+	font-size: 14px;
+	font-weight: 600;
 }
 
 .reviewsTitle {
 	margin: 0 0 10px;
 	font-size: 18px;
+}
+
+.trailer {
+	margin: 16px 0;
+	padding: 14px;
+}
+
+.trailerTitle {
+	margin: 0 0 10px;
+	font-size: 18px;
+}
+
+.trailerFrame {
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	overflow: hidden;
+	aspect-ratio: 16 / 9;
+}
+
+.trailerFrame iframe {
+	width: 100%;
+	height: 100%;
+	border: 0;
+	display: block;
+}
+
+.trailerLink {
+	margin: 0;
 }
 
 .reviewList {
@@ -360,6 +551,10 @@ watch(
 
 .reviewActions {
 	margin-top: 10px;
+	display: flex;
+	gap: 8px;
+	justify-content: flex-end;
+	align-items: center;
 }
 
 .reviewForm {
@@ -368,6 +563,7 @@ watch(
 
 .addReview {
 	margin-top: 16px;
+	padding: 14px;
 }
 
 .you {

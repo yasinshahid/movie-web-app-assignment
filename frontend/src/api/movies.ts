@@ -4,6 +4,9 @@ export type MovieListItem = {
 	id: string;
 	title: string;
 	description: string | null;
+	posterUrl: string | null;
+	trailerUrl: string | null;
+	releaseYear: number | null;
 	owner: { id: string; email: string };
 	reviewCount: number;
 	createdAt: string;
@@ -40,7 +43,13 @@ export async function getMovie(movieId: string) {
 	return res.data as GetMovieResponse;
 }
 
-export async function createMovie(input: { title: string; description?: string | null }) {
+export async function createMovie(input: {
+	title: string;
+	description?: string | null;
+	posterUrl?: string | null;
+	trailerUrl?: string | null;
+	releaseYear?: number | null;
+}) {
 	const res = await http.post('/movies', input);
 	return res.data as CreateMovieResponse;
 }

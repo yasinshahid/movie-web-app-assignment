@@ -38,15 +38,21 @@ export const createMovie = asyncHandler(async (req: Request, res: Response) => {
 		});
 	}
 
-	const { title, description } = req.body as {
+	const { title, description, posterUrl, trailerUrl, releaseYear } = req.body as {
 		title: string;
 		description?: string | null;
+		posterUrl?: string | null;
+		trailerUrl?: string | null;
+		releaseYear?: number | null;
 	};
 
 	const result = await moviesService.createMovie({
 		ownerId: userId,
 		title,
 		description,
+		posterUrl,
+		trailerUrl,
+		releaseYear,
 	});
 
 	res.status(201).json(result);
@@ -63,15 +69,18 @@ export const updateMovie = asyncHandler(async (req: Request, res: Response) => {
 	}
 
 	const { movieId } = req.params as { movieId: string };
-	const { title, description } = req.body as {
+	const { title, description, posterUrl, trailerUrl, releaseYear } = req.body as {
 		title?: string;
 		description?: string | null;
+		posterUrl?: string | null;
+		trailerUrl?: string | null;
+		releaseYear?: number | null;
 	};
 
 	const result = await moviesService.updateMovie({
 		movieId,
 		userId,
-		data: { title, description },
+		data: { title, description, posterUrl, trailerUrl, releaseYear },
 	});
 
 	res.status(200).json(result);

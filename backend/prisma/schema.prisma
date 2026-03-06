@@ -22,6 +22,9 @@ model Movie {
   id          String   @id @default(cuid())
   title       String   @unique
   description String?
+  posterUrl   String?
+  trailerUrl  String?
+  releaseYear Int?
   ownerId     String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

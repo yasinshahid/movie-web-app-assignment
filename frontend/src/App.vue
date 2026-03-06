@@ -15,24 +15,31 @@ async function onLogout() {
 <template>
   <div class="layout">
     <header class="topbar">
-      <nav class="nav">
-        <div class="left">
-          <RouterLink class="navLink brand" to="/">Home</RouterLink>
-          <RouterLink v-if="auth.isAuthenticated" class="navLink" to="/movies/new">
-            Create Movie
-          </RouterLink>
+      <nav class="nav" aria-label="Top navigation">
+        <div class="navInner">
+          <div class="left">
+            <RouterLink class="brand" to="/">Movie Web App</RouterLink>
+            <div class="links">
+              <RouterLink class="navLink" to="/">Home</RouterLink>
+              <RouterLink v-if="auth.isAuthenticated" class="btnPrimary btnSm" to="/movies/new">
+                Create Movie
+              </RouterLink>
+            </div>
+          </div>
+
+          <div class="spacer" />
+
+          <div class="right">
+            <template v-if="!auth.isAuthenticated">
+              <RouterLink class="btnPrimary btnSm" to="/login">Login</RouterLink>
+              <RouterLink class="btnPrimary btnSm" to="/register">Register</RouterLink>
+            </template>
+            <template v-else>
+              <span class="user" title="Signed in user">{{ auth.currentUser?.email }}</span>
+              <button type="button" class="btnSm" @click="onLogout">Logout</button>
+            </template>
+          </div>
         </div>
-
-        <div class="spacer" />
-
-        <template v-if="!auth.isAuthenticated">
-          <RouterLink class="navLink" to="/login">Login</RouterLink>
-          <RouterLink class="navLink" to="/register">Register</RouterLink>
-        </template>
-        <template v-else>
-          <span class="user">{{ auth.currentUser?.email }}</span>
-          <button type="button" class="btnSm" @click="onLogout">Logout</button>
-        </template>
       </nav>
     </header>
 
@@ -53,28 +60,63 @@ async function onLogout() {
 }
 
 .nav {
+  padding: 10px 0;
+}
+
+.navInner {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 0;
+  gap: 16px;
 }
 
 .left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  min-width: 0;
 }
 
 .brand {
   font-weight: 700;
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.navLink {
+	border: 1px solid transparent;
+}
+
+.navLink.router-link-active {
+	border-color: var(--border);
+	text-decoration: none;
 }
 
 .spacer {
   flex: 1;
 }
 
+.right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .user {
   opacity: 0.9;
+  font-size: 13px;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .content {

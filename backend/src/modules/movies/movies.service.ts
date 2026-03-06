@@ -5,6 +5,9 @@ export type MovieListItem = {
 	id: string;
 	title: string;
 	description: string | null;
+	posterUrl: string | null;
+	trailerUrl: string | null;
+	releaseYear: number | null;
 	owner: { id: string; email: string };
 	reviewCount: number;
 	createdAt: string;
@@ -15,6 +18,9 @@ function toListItem(movie: {
 	id: string;
 	title: string;
 	description: string | null;
+	posterUrl: string | null;
+	trailerUrl: string | null;
+	releaseYear: number | null;
 	createdAt: Date;
 	updatedAt: Date;
 	owner: { id: string; email: string };
@@ -24,6 +30,9 @@ function toListItem(movie: {
 		id: movie.id,
 		title: movie.title,
 		description: movie.description,
+		posterUrl: movie.posterUrl,
+		trailerUrl: movie.trailerUrl,
+		releaseYear: movie.releaseYear,
 		owner: movie.owner,
 		reviewCount: movie._count.reviews,
 		createdAt: movie.createdAt.toISOString(),
@@ -69,6 +78,9 @@ export async function listMovies(input: {
 				id: true,
 				title: true,
 				description: true,
+				posterUrl: true,
+				trailerUrl: true,
+				releaseYear: true,
 				createdAt: true,
 				updatedAt: true,
 				owner: { select: { id: true, email: true } },
@@ -92,6 +104,9 @@ export async function getMovie(movieId: string) {
 			id: true,
 			title: true,
 			description: true,
+			posterUrl: true,
+			trailerUrl: true,
+			releaseYear: true,
 			createdAt: true,
 			updatedAt: true,
 			owner: { select: { id: true, email: true } },
@@ -114,18 +129,27 @@ export async function createMovie(input: {
 	ownerId: string;
 	title: string;
 	description?: string | null;
+	posterUrl?: string | null;
+	trailerUrl?: string | null;
+	releaseYear?: number | null;
 }) {
 	try {
 		const movie = await prisma.movie.create({
 			data: {
 				title: input.title.trim(),
 				description: input.description ?? null,
+				posterUrl: input.posterUrl?.trim() ?? null,
+				trailerUrl: input.trailerUrl?.trim() ?? null,
+				releaseYear: input.releaseYear ?? null,
 				ownerId: input.ownerId,
 			},
 			select: {
 				id: true,
 				title: true,
 				description: true,
+				posterUrl: true,
+				trailerUrl: true,
+				releaseYear: true,
 				createdAt: true,
 				updatedAt: true,
 				owner: { select: { id: true, email: true } },
@@ -151,7 +175,13 @@ export async function createMovie(input: {
 export async function updateMovie(input: {
 	movieId: string;
 	userId: string;
-	data: { title?: string; description?: string | null };
+	data: {
+		title?: string;
+		description?: string | null;
+		posterUrl?: string | null;
+		trailerUrl?: string | null;
+		releaseYear?: number | null;
+	};
 }) {
 	const existing = await prisma.movie.findUnique({
 		where: { id: input.movieId },
@@ -184,11 +214,23 @@ export async function updateMovie(input: {
 				...(input.data.description !== undefined
 					? { description: input.data.description }
 					: {}),
+				...(input.data.posterUrl !== undefined
+					? { posterUrl: input.data.posterUrl?.trim() ?? null }
+					: {}),
+				...(input.data.trailerUrl !== undefined
+					? { trailerUrl: input.data.trailerUrl?.trim() ?? null }
+					: {}),
+				...(input.data.releaseYear !== undefined
+					? { releaseYear: input.data.releaseYear }
+					: {}),
 			},
 			select: {
 				id: true,
 				title: true,
 				description: true,
+				posterUrl: true,
+				trailerUrl: true,
+				releaseYear: true,
 				createdAt: true,
 				updatedAt: true,
 				owner: { select: { id: true, email: true } },

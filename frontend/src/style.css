@@ -4,8 +4,12 @@
 	font-weight: 400;
 	color: #111827;
 	background-color: #ffffff;
+	--ink: #111827;
 	--surface: #ffffff;
 	--border: #e5e7eb;
+	--focus: rgba(17, 24, 39, 0.18);
+	--hover: rgba(17, 24, 39, 0.04);
+	--pressed: rgba(17, 24, 39, 0.08);
 	--radius: 12px;
 	--radius-sm: 8px;
 	--space-1: 6px;
@@ -22,11 +26,22 @@ body {
 	margin: 0;
 	min-width: 320px;
 	min-height: 100vh;
+	color: var(--ink);
+	background: var(--hover);
 }
 
 a {
 	color: inherit;
 	text-decoration: underline;
+}
+
+a:focus-visible {
+	outline: 2px solid var(--focus);
+	outline-offset: 2px;
+}
+
+img {
+	max-width: 100%;
 }
 
 input {
@@ -35,6 +50,11 @@ input {
 	border-radius: var(--radius-sm);
 	border: 1px solid var(--border);
 	font: inherit;
+}
+
+input:focus-visible {
+	outline: 2px solid var(--focus);
+	outline-offset: 2px;
 }
 
 textarea {
@@ -46,6 +66,11 @@ textarea {
 	resize: vertical;
 }
 
+textarea:focus-visible {
+	outline: 2px solid var(--focus);
+	outline-offset: 2px;
+}
+
 select {
 	width: 100%;
 	padding: 10px 12px;
@@ -55,6 +80,11 @@ select {
 	background: var(--surface);
 }
 
+select:focus-visible {
+	outline: 2px solid var(--focus);
+	outline-offset: 2px;
+}
+
 button {
 	border-radius: var(--radius-sm);
 	border: 1px solid var(--border);
@@ -62,6 +92,20 @@ button {
 	font: inherit;
 	background: var(--surface);
 	cursor: pointer;
+	font-weight: 600;
+}
+
+button:hover:not(:disabled) {
+	background: var(--hover);
+}
+
+button:active:not(:disabled) {
+	background: var(--pressed);
+}
+
+button:focus-visible {
+	outline: 2px solid var(--focus);
+	outline-offset: 2px;
 }
 
 button:disabled {
@@ -86,6 +130,7 @@ button:disabled {
 .title {
 	margin: 0;
 	font-size: 24px;
+	letter-spacing: -0.01em;
 }
 
 .subtitle {
@@ -107,12 +152,17 @@ button:disabled {
 	border-radius: var(--radius);
 	background: var(--surface);
 	padding: 12px;
+	box-shadow: 0 1px 2px var(--pressed);
 }
 
 .cardLink {
 	display: block;
 	text-decoration: none;
 	color: inherit;
+}
+
+.cardLink:hover {
+	background: var(--hover);
 }
 
 .cardLink:focus-visible {
@@ -128,6 +178,12 @@ button:disabled {
 .field {
 	display: grid;
 	gap: 6px;
+}
+
+.field > span {
+	font-size: 13px;
+	font-weight: 600;
+	opacity: 0.9;
 }
 
 .actions {
@@ -150,7 +206,62 @@ button:disabled {
 	padding: 6px 10px;
 }
 
+.btnPrimary {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--ink);
+	background: var(--ink);
+	color: var(--surface);
+	text-decoration: none;
+	font-weight: 700;
+}
+
+.btnPrimary:hover {
+	box-shadow: 0 0 0 1px var(--surface) inset;
+}
+
+.btnPrimary:active {
+	box-shadow: 0 0 0 2px var(--surface) inset;
+}
+
+button.btnPrimary:disabled:hover,
+button.btnPrimary:disabled:active {
+	box-shadow: none;
+}
+
+.btnPrimary:focus-visible {
+	outline: 2px solid var(--focus);
+	outline-offset: 2px;
+}
+
 .error {
 	color: #b00020;
 	margin: 0;
+}
+
+.errorBox {
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	padding: 10px 12px;
+	background: rgba(176, 0, 32, 0.06);
+}
+
+.stack {
+	display: grid;
+	gap: 12px;
+}
+
+.split {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 12px;
+}
+
+@media (min-width: 720px) {
+	.split {
+		grid-template-columns: 1fr 1fr;
+	}
 }

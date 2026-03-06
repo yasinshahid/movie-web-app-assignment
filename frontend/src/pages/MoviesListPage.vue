@@ -13,6 +13,7 @@ const sort = ref<'recent' | 'reviewCount'>('recent');
 const isLoading = ref(false);
 const errorMessage = ref<string | null>(null);
 const items = ref<moviesApi.MovieListItem[]>([]);
+const posterLoadErrorById = ref<Record<string, boolean>>({});
 
 const hasResults = computed(() => items.value.length > 0);
 
@@ -32,11 +33,16 @@ async function fetchMovies() {
 			pageSize: 20,
 		});
 		items.value = res.items;
+		posterLoadErrorById.value = {};
 	} catch (err: any) {
 		errorMessage.value = err?.response?.data?.error?.message ?? 'Failed to load movies';
 	} finally {
 		isLoading.value = false;
 	}
+}
+
+function onPosterError(movieId: string) {
+	posterLoadErrorById.value[movieId] = true;
 }
 
 async function onSearchSubmit() {
@@ -56,36 +62,38 @@ onMounted(async () => {
 
 <template>
 	<section class="page">
-		<header class="header">
-			<div>
-				<h1 class="title">Movies</h1>
-				<p class="subtitle">Browse movies (search and sort supported).</p>
+		<section class="card top">
+			<header class="header">
+				<div>
+					<h1 class="title">Movies</h1>
+					<p class="subtitle">Browse movies, then jump into details and reviews.</p>
+				</div>
+
+				<RouterLink v-if="auth.isAuthenticated" class="btnPrimary create" to="/movies/new">
+					Create Movie
+				</RouterLink>
+			</header>
+
+			<div class="controls">
+				<form class="search" @submit.prevent="onSearchSubmit">
+					<input
+						v-model="searchInput"
+						type="search"
+						placeholder="Search by title"
+						aria-label="Search by title"
+					/>
+					<button type="submit" :disabled="isLoading">Search</button>
+				</form>
+
+				<label class="sort">
+					<span>Sort</span>
+					<select v-model="sort">
+						<option value="recent">Recent</option>
+						<option value="reviewCount">Most reviewed</option>
+					</select>
+				</label>
 			</div>
-
-			<RouterLink v-if="auth.isAuthenticated" class="create cardLink" to="/movies/new">
-				Create Movie
-			</RouterLink>
-		</header>
-
-		<div class="controls">
-			<form class="search" @submit.prevent="onSearchSubmit">
-				<input
-					v-model="searchInput"
-					type="search"
-					placeholder="Search by title"
-					aria-label="Search by title"
-				/>
-				<button type="submit" :disabled="isLoading">Search</button>
-			</form>
-
-			<label class="sort">
-				<span>Sort</span>
-				<select v-model="sort">
-					<option value="recent">Recent</option>
-					<option value="reviewCount">Most reviewed</option>
-				</select>
-			</label>
-		</div>
+		</section>
 
 		<p v-if="isLoading" class="state">Loading movies...</p>
 		<p v-else-if="errorMessage" class="state">{{ errorMessage }}</p>
@@ -93,16 +101,35 @@ onMounted(async () => {
 
 		<ul v-else class="list">
 			<li v-for="movie in items" :key="movie.id">
-				<RouterLink class="card cardLink" :to="`/movies/${movie.id}`">
-					<div class="itemTop">
-						<h2 class="itemTitle">{{ movie.title }}</h2>
-						<span class="badge">{{ movie.reviewCount }} reviews</span>
-					</div>
-					<p v-if="movie.description" class="desc">{{ movie.description }}</p>
-					<p v-else class="desc muted">No description.</p>
-					<div class="meta">
-						<p><strong>Owner:</strong> {{ movie.owner.email }}</p>
-						<p><strong>Created:</strong> {{ formatDate(movie.createdAt) }}</p>
+				<RouterLink class="card cardLink movieCard" :to="`/movies/${movie.id}`">
+					<div class="row">
+						<div class="posterWrap">
+							<img
+								v-if="movie.posterUrl && !posterLoadErrorById[movie.id]"
+								class="posterImg"
+								:src="movie.posterUrl"
+								:alt="`${movie.title} poster`"
+								loading="lazy"
+								@error="onPosterError(movie.id)"
+							/>
+							<div v-else class="posterPlaceholder muted">Poster unavailable</div>
+						</div>
+
+						<div class="info">
+							<div class="itemTop">
+								<h2 class="itemTitle">
+									{{ movie.title }}
+									<span v-if="movie.releaseYear" class="year muted">({{ movie.releaseYear }})</span>
+								</h2>
+								<span class="badge">{{ movie.reviewCount }} reviews</span>
+							</div>
+							<p v-if="movie.description" class="desc">{{ movie.description }}</p>
+							<p v-else class="desc muted">No description.</p>
+							<div class="meta">
+								<p><strong>Owner:</strong> {{ movie.owner.email }}</p>
+								<p><strong>Created:</strong> {{ formatDate(movie.createdAt) }}</p>
+							</div>
+						</div>
 					</div>
 				</RouterLink>
 			</li>
@@ -113,17 +140,19 @@ onMounted(async () => {
 <style scoped>
 .header {
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
 	gap: 16px;
 	justify-content: space-between;
+	margin-bottom: 12px;
+}
+
+.top {
+	padding: 16px;
 	margin-bottom: 16px;
 }
 
 .create {
-	align-self: center;
-	border: 1px solid var(--border);
 	padding: 10px 12px;
-	border-radius: var(--radius-sm);
 }
 
 .controls {
@@ -131,7 +160,7 @@ onMounted(async () => {
 	gap: 16px;
 	align-items: flex-end;
 	flex-wrap: wrap;
-	margin-bottom: 16px;
+	margin: 0;
 }
 
 .search {
@@ -144,6 +173,7 @@ onMounted(async () => {
 .sort {
 	display: grid;
 	gap: 6px;
+	min-width: 200px;
 }
 
 .list {
@@ -152,6 +182,49 @@ onMounted(async () => {
 	margin: 0;
 	display: grid;
 	gap: 12px;
+}
+
+.movieCard {
+	padding: 14px;
+}
+
+.row {
+	display: flex;
+	gap: 12px;
+	align-items: flex-start;
+}
+
+.posterWrap {
+	flex: 0 0 auto;
+}
+
+.posterImg,
+.posterPlaceholder {
+	width: 76px;
+	height: 114px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--border);
+}
+
+.posterImg {
+	display: block;
+	object-fit: cover;
+}
+
+.posterPlaceholder {
+	display: grid;
+	place-items: center;
+	text-align: center;
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	padding: 6px;
+	background: var(--hover);
+}
+
+.info {
+	flex: 1;
+	min-width: 0;
 }
 
 .itemTop {
@@ -164,6 +237,12 @@ onMounted(async () => {
 .itemTitle {
 	margin: 0;
 	font-size: 18px;
+	line-height: 1.25;
+}
+
+.year {
+	margin-left: 6px;
+	font-size: 14px;
 }
 
 .badge {
@@ -176,6 +255,10 @@ onMounted(async () => {
 
 .desc {
 	margin: 8px 0 0;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
 }
 
 .meta {
