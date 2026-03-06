@@ -1,79 +1,156 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+	font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+	line-height: 1.5;
+	font-weight: 400;
+	color: #111827;
+	background-color: #ffffff;
+	--surface: #ffffff;
+	--border: #e5e7eb;
+	--radius: 12px;
+	--radius-sm: 8px;
+	--space-1: 6px;
+	--space-2: 10px;
+	--space-3: 16px;
+	--space-4: 24px;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+* {
+	box-sizing: border-box;
 }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+	margin: 0;
+	min-width: 320px;
+	min-height: 100vh;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+a {
+	color: inherit;
+	text-decoration: underline;
+}
+
+input {
+	width: 100%;
+	padding: 10px 12px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--border);
+	font: inherit;
+}
+
+textarea {
+	width: 100%;
+	padding: 10px 12px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--border);
+	font: inherit;
+	resize: vertical;
+}
+
+select {
+	width: 100%;
+	padding: 10px 12px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--border);
+	font: inherit;
+	background: var(--surface);
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--border);
+	padding: 10px 12px;
+	font: inherit;
+	background: var(--surface);
+	cursor: pointer;
 }
 
-.card {
-  padding: 2em;
+button:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
 }
 
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+	max-width: 960px;
+	margin: 0 auto;
+	padding: 0 16px;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.page {
+	padding: var(--space-4) 0;
+}
+
+.pageNarrow {
+	max-width: 560px;
+}
+
+.title {
+	margin: 0;
+	font-size: 24px;
+}
+
+.subtitle {
+	margin: 6px 0 0;
+	opacity: 0.8;
+}
+
+.muted {
+	opacity: 0.75;
+}
+
+.state {
+	opacity: 0.85;
+	margin: 0;
+}
+
+.card {
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--surface);
+	padding: 12px;
+}
+
+.cardLink {
+	display: block;
+	text-decoration: none;
+	color: inherit;
+}
+
+.cardLink:focus-visible {
+	outline: 2px solid var(--border);
+	outline-offset: 2px;
+}
+
+.form {
+	display: grid;
+	gap: 12px;
+}
+
+.field {
+	display: grid;
+	gap: 6px;
+}
+
+.actions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.navLink {
+	text-decoration: none;
+	padding: 6px 8px;
+	border-radius: var(--radius-sm);
+}
+
+.navLink:hover {
+	text-decoration: underline;
+}
+
+.btnSm {
+	padding: 6px 10px;
+}
+
+.error {
+	color: #b00020;
+	margin: 0;
 }
