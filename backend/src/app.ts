@@ -3,6 +3,11 @@ import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 
+import authRoutes from './modules/auth/auth.routes';
+import moviesRoutes from './modules/movies/movies.routes';
+import reviewsRoutes from './modules/reviews/reviews.routes';
+import { errorHandler } from './middlewares/errorHandler';
+
 type CreateAppOptions = {
 	requestLogger?: boolean;
 };
@@ -21,6 +26,12 @@ export function createApp(options: CreateAppOptions = {}) {
 	app.get('/api/health', (_req, res) => {
 		res.status(200).json({ status: 'ok' });
 	});
+
+	app.use('/api/auth', authRoutes);
+	app.use('/api/movies', moviesRoutes);
+	app.use('/api', reviewsRoutes);
+
+	app.use(errorHandler);
 
 	return app;
 }
